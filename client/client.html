@@ -4,49 +4,106 @@
         <title>WebSocket demo</title>
         <style type="text/css">
             body {
-                font-family: "Courier New", sans-serif;
+                font-family: "Georgia", serif;
                 text-align: center;
+                height:100%;
+                width:100%;
+                padding:0;
+                margin:0;
+                position:absolute;
+                background-color:#eee;
             }
-            .buttons {
-                font-size: 4em;
-                display: flex;
-                justify-content: center;
+            #doublecontainer {
+                position:absolute;
+                left:20px;
+                top:120px;
+                right:20px;
+                bottom:20px;
+                margin:auto;
             }
-            .button, .value {
-                line-height: 1;
-                padding: 2rem;
-                margin: 2rem;
-                border: medium solid;
-                min-height: 1em;
-                min-width: 1em;
+            #container {
+                position: relative;
+                width:100%;
+                max-height:100%;
+                padding-top:50%;
+                background-color:#f00;
             }
-            .button {
-                cursor: pointer;
-                user-select: none;
+            #playfield {
+                position: absolute;
+                left:0;
+                right:0;
+                top:0;
+                bottom:0;
+                background-color:#fff;
             }
-            .minus {
-                color: red;
+            .player {
+                border:1px solid #888;
+                background-color:#eee;
+                width:35px;
+                height:35px;
+                position:absolute;
+                display:block;
+                border-radius:45px;
+                transform:translate(-50%, -50%);
+                font-weight:bold;
+                font-size:28px;
+                text-align:center;
+                padding:11px 10px 9px 10px;
+                z-index: 1;
+                pointer-events: none;
             }
-            .plus {
-                color: green;
+            .player.me {
+                border:2px solid #0033ff;
+                background-color:#ccddff;
             }
-            .value {
-                min-width: 2em;
+            #status {
+                position: absolute;
+                top:3%;
+                left:0;
+                width:100%;
+                display:block;
+                font-size:30pt;
+                z-index: 2;
             }
-            .state {
-                font-size: 2em;
+            #words {
+                font-size:20pt;
+                display:inline;
+                text-align:left;
+                position: absolute;
+                left:20px;
+                top:60px;
+            }
+            #score {
+                font-size:30pt;
+                display:inline;
+                text-align:left;
+                position: absolute;
+                left:20px;
+                top:10px;
+            }
+            .validation {
+                position: absolute;
+                background-color:#eee;
+                z-index: 0;
+                border-radius:5px;
+                pointer-events: none;
+                transition: left .25s, top .25s, width .25s, height .25s, opacity 0.5s;
+            }
+            .validation.valid {
+                background-color:#99ff99;
             }
         </style>
     </head>
     <body>
-        <div class="buttons">
-            <div class="minus button">-</div>
-            <div class="value">?</div>
-            <div class="plus button">+</div>
-        </div>
-        <div class="state">
-            <span class="users">?</span> online
-        </div>
-        <script src="main.js"></script>
+        <div id="status">Loading</div>
+        <div id="score">Score: 0</div>
+        <div id="words"></div>   
+        <div id="doublecontainer">
+            <div id="container">
+                <div id="playfield">
+                </div>
+            </div>
+        </div>     
     </body>
+    <script src="main.js"></script>
 </html>

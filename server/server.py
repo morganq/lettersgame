@@ -1,75 +1,127 @@
-# WS server example that synchronizes state across clients
-
 import asyncio
 import json
 import logging
 import websockets
+import random
+import time
+from player import Player
+from game import Game
 
 logging.basicConfig()
 
-STATE = {"value": 0}
+NEXT_ID = 1
+games = []
+player_for_websocket = {}
+game_for_player = {}
 
-USERS = set()
+def get_users():
+    return list(player_for_websocket.values())
 
+def state_event(game):
+    s = game.serialize()
+    return json.dumps({"type": "state", "value": s})
 
-def state_event():
-    return json.dumps({"type": "state", **STATE})
+def join_event(player_id):
+    return json.dumps({"type":"joined", "value": {"your_id":player_id}})
 
+def move_player(player, x, y):
+    player.x = x
+    player.y = y
 
-def users_event():
-    return json.dumps({"type": "users", "count": len(USERS)})
+def set_player_target(player, tx, ty):
+    player.tx = tx
+    player.ty = ty
 
-
-async def notify_state():
-    if USERS:  # asyncio.wait doesn't accept an empty list
-        message = state_event()
-        await asyncio.wait([user.send(message) for user in USERS])
-
-
-async def notify_users():
-    if USERS:  # asyncio.wait doesn't accept an empty list
-        message = users_event()
-        await asyncio.wait([user.send(message) for user in USERS])
-
+async def notify_state(game):
+    if player_for_websocket:  # asyncio.wait doesn't accept an empty list
+        ws_for_player = dict(map(reversed, player_for_websocket.items())) # invert dict
+        message = state_event(game)
+        await asyncio.wait([ws_for_player[p].send(message) for p in game.players])
 
 async def register(websocket):
-    USERS.add(websocket)
-    await notify_users()
+    global NEXT_ID
+    p = Player(NEXT_ID)
+    NEXT_ID += 1
 
+    # Find a game for this player
+    games_random = list(games)
+    random.shuffle(games_random)
+    game = None
+    for game in games_random:
+        if len(game.players) < game.max_players:
+            game.add_player(p)
+            if len(game.players) == 3:
+                game.new_round()
+            break
+    else: # if we didn't find an existing game
+        game = Game()
+        game.add_player(p)
+        games.append(game)
+    
+    game_for_player[p] = game
+
+    player_for_websocket[websocket] = p
+
+    await notify_state(game)
 
 async def unregister(websocket):
-    USERS.remove(websocket)
-    await notify_users()
+    p = player_for_websocket[websocket]
+    game = game_for_player[p]
+    game.players.remove(p)
+    del player_for_websocket[websocket]
+    if len(game.players) == 0:
+        games.remove(game)
+    else:
+        await notify_state(game)
 
 
 async def counter(websocket, path):
-    print("Counter called")
     # register(websocket) sends user_event() to websocket
     await register(websocket)
     try:
-        await websocket.send(state_event())
+        player = player_for_websocket[websocket]
+        player_id = player.pid
+        game = game_for_player[player]
+
+        await websocket.send(join_event(player_id))
+        await websocket.send(state_event(game))
         async for message in websocket:
             data = json.loads(message)
-            if data["action"] == "minus":
-                STATE["value"] -= 1
-                await notify_state()
-            elif data["action"] == "plus":
-                STATE["value"] += 1
-                await notify_state()
+            if data["action"] == "move":
+                move_player(player, data['x'], data['y'])
+            if data["action"] == "target":
+                set_player_target(player, data['x'], data['y'])
             else:
                 logging.error("unsupported event: {}", data)
     finally:
         await unregister(websocket)
 
+async def main():
+    t1 = asyncio.create_task(update_game())
+    t2 = asyncio.create_task(print_status())
+
 async def update_game():
+    target_dt = 0.1
+    last_time = time.time()
     while 1:
-        STATE["value"] += 1
-        await notify_state()
-        await asyncio.sleep(1)
+        current_time = time.time()
+        dt = current_time - last_time
+        next_tick = current_time + target_dt
+        for game in games:
+            game.update(dt)
+            await notify_state(game)
+        last_time = time.time()
+        await asyncio.sleep(next_tick - time.time())
 
+async def print_status():
+    while 1:
+        print("-- Status --")
+        for game in games:
+            print(game.status_str())
+        await asyncio.sleep(5)
 
-start_server = websockets.serve(counter, "localhost", 6789)
+start_server = websockets.serve(counter, "192.168.1.146", 6789)
 
 asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_until_complete(update_game())
+asyncio.get_event_loop().run_until_complete(main())
 asyncio.get_event_loop().run_forever()
