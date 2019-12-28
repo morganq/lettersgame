@@ -129,6 +129,7 @@ try:
     start_server = websockets.serve(counter, host_ip, 6789)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_until_complete(main())
+    print("Hosting on %s" % host_ip)
     asyncio.get_event_loop().run_forever()
 except Exception as e:
     print(e)
@@ -136,4 +137,5 @@ except Exception as e:
     start_server = websockets.serve(counter, host_ip, 6789)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_until_complete(main())
+    print("Hosting on %s" % host_ip)
     asyncio.get_event_loop().run_forever()    
