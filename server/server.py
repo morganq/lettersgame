@@ -4,6 +4,8 @@ import logging
 import websockets
 import random
 import time
+import socket
+import requests
 from player import Player
 from game import Game
 
@@ -120,8 +122,18 @@ async def print_status():
             print(game.status_str())
         await asyncio.sleep(5)
 
-start_server = websockets.serve(counter, "192.168.1.146", 6789)
-
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_until_complete(main())
-asyncio.get_event_loop().run_forever()
+host_ip = None
+try:
+    content = requests.get("http://checkip.amazonaws.com").content
+    host_ip = content.decode('iso-8859-1').strip()
+    start_server = websockets.serve(counter, host_ip, 6789)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.get_event_loop().run_forever()
+except Exception as e:
+    print(e)
+    host_ip = socket.gethostbyname(socket.gethostname())
+    start_server = websockets.serve(counter, host_ip, 6789)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_until_complete(main())
+    asyncio.get_event_loop().run_forever()    
